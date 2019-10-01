@@ -95,8 +95,8 @@ class OrphanSnapshotCleaner(object):
 
 class AMICleaner(object):
 
-    def __init__(self, ec2=None):
-        self.ec2 = ec2 or boto3.client('ec2', config=Config(retries={'max_attempts': BOTO3_RETRIES}))
+    def __init__(self, ec2=None, region_name=None):
+        self.ec2 = ec2 or boto3.client('ec2', region_name=region_name, config=Config(retries={'max_attempts': BOTO3_RETRIES}))
 
     @staticmethod
     def get_ami_sorting_key(ami):

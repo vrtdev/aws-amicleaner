@@ -48,12 +48,21 @@ class App(object):
         f = Fetcher(region_name=self.region_name)
 
         available_amis = available_amis or f.fetch_available_amis()
+        available_launch_permissions = []
+
+        for group_name, amis in available_amis.items():
+            for launch_permission in amis.launch_permission_mappings:
+                available_launch_permissions.append(launch_permission.user_id)
+
+        available_launch_permissions = list(dict.fromkeys(available_launch_permissions))
 
         excluded_amis = excluded_amis or []
 
         if not excluded_amis:
             excluded_amis += f.fetch_unattached_lc()
-            excluded_amis += f.fetch_zeroed_asg()
+            excluded_amis += f.fetch_unattached_lt()
+            excluded_amis += f.fetch_zeroed_asg_lc()
+            excluded_amis += f.fetch_zeroed_asg_lt()
             excluded_amis += f.fetch_instances()
         
         """ If role_name is given, search in other accounts """
@@ -66,13 +75,16 @@ class App(object):
 
             If LaunchPermissions or UserId is empty, it will skip the for loop.
             """
-            for user_id in available_amis.get('LaunchPermissions', {}).get('UserId', []):
-                role_arn = "arn:aws:iam::{}:role/{}".format(user_id, self.role_name)
-                f = Fetcher(role_arn=role_arn, region_name=self.region_name)
+            for user_id in available_launch_permissions:
+                if user_id is not None:
+                    role_arn = "arn:aws:iam::{}:role/{}".format(user_id, self.role_name)
+                    f = Fetcher(role_arn=role_arn, region_name=self.region_name)
 
-                excluded_amis += f.fetch_unattached_lc()
-                excluded_amis += f.fetch_zeroed_asg()
-                excluded_amis += f.fetch_instances()
+                    excluded_amis += f.fetch_unattached_lc()
+                    excluded_amis += f.fetch_unattached_lt()
+                    excluded_amis += f.fetch_zeroed_asg_lc()
+                    excluded_amis += f.fetch_zeroed_asg_lt()
+                    excluded_amis += f.fetch_instances()
 
         candidates = [v
                       for k, v
@@ -90,7 +102,7 @@ class App(object):
         if not candidates_amis:
             return None
 
-        c = AMICleaner()
+        c = AMICleaner(region_name=self.region_name)
 
         mapped_amis = c.map_candidates(
             candidates_amis=candidates_amis,

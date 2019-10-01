@@ -23,12 +23,14 @@ class AMI(object):
         self.state = None
         self.tags = []
         self.virtualization_type = None
+        self.launch_permission_mappings = []
 
     def __str__(self):
         return str({
             'id': self.id,
             'virtualization_type': self.virtualization_type,
             'creation_date': self.creation_date,
+            'launch_permission_mappings': self.launch_permission_mappings,
         })
 
     @staticmethod
@@ -57,6 +59,12 @@ class AMI(object):
             in json.get('BlockDeviceMappings', [])
         ]
         o.block_device_mappings = [f for f in ebs_snapshots if f]
+
+        launch_permissions = [
+            AWSLaunchPermissions.object_with_json(launch_permission) for launch_permission
+            in json.get('LaunchPermissions', [])
+        ]
+        o.launch_permission_mappings = [f for f in launch_permissions if f]
 
         return o
 
@@ -169,4 +177,26 @@ class AWSTag(object):
         o = AWSTag()
         o.key = json.get('Key')
         o.value = json.get('Value')
+        return o
+
+class AWSLaunchPermissions(object):
+    def __init__(self):
+        self.group = None
+        self.user_id = None
+
+    def __str__(self):
+        return str({
+            'group': self.group,
+            'user_id': self.user_id,
+        })
+
+    @staticmethod
+    def object_with_json(json):
+        if json is None:
+            return None
+
+        o = AWSLaunchPermissions()
+        o.group = json.get('Group')
+        o.user_id = json.get('UserId')
+
         return o

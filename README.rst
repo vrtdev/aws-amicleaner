@@ -62,8 +62,11 @@ permissions in ``iam``:
                     "ec2:DeleteSnapshot",
                     "ec2:DeregisterImage",
                     "ec2:DescribeImages",
+                    "ec2:DescribeImageAttribute",
                     "ec2:DescribeInstances",
                     "ec2:DescribeSnapshots",
+                    "ec2:DescribeLaunchTemplates",
+                    "ec2:DescribeLaunchTemplateVersions",
                     "autoscaling:DescribeAutoScalingGroups",
                     "autoscaling:DescribeLaunchConfigurations"
                 ],
