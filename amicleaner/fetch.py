@@ -22,7 +22,7 @@ class Fetcher(object):
 
             credentials = sts.assume_role(
                 RoleArn=role_arn,
-                RoleSessionName="amicleaner-session",
+                RoleSessionName="amicleaner-fetcher-session",
             )['Credentials']
             
             session = boto3.Session(
@@ -45,10 +45,10 @@ class Fetcher(object):
         my_custom_images = self.ec2.describe_images(Owners=['self'])
 
         for image_json in my_custom_images.get('Images'):
+            """ Merge image_json with LaunchPermissions since it is a seperate call """
+            image_json.update(self.ec2.describe_image_attribute(Attribute='launchPermission', ImageId=image_json.get('ImageId')))
             ami = AMI.object_with_json(image_json)
             available_amis[ami.id] = ami
-            launch_permissions = self.ec2.describe_image_attribute(Attribute='launchPermission', ImageId=ami.id)
-            available_amis[ami.id] += launch_permissions
 
         return available_amis
 
@@ -72,12 +72,41 @@ class Fetcher(object):
         resp = self.asg.describe_launch_configurations(
             LaunchConfigurationNames=unused_lcs
         )
+
         amis = [lc.get("ImageId")
                 for lc in resp.get("LaunchConfigurations", [])]
 
+
         return amis
 
-    def fetch_zeroed_asg(self):
+    def fetch_unattached_lt(self):
+
+        """
+        Find AMIs for launch templates unattached
+        to autoscaling groups
+        """
+
+        resp = self.asg.describe_auto_scaling_groups()
+        used_lt = (asg.get("LaunchTemplate", {}).get("LaunchTemplateName")
+                   for asg in resp.get("AutoScalingGroups", []))
+
+        resp = self.ec2.describe_launch_templates()
+        all_lts = (lt.get("LaunchTemplateName", "")
+                   for lt in resp.get("LaunchTemplates", []))
+
+        unused_lts = list(set(all_lts) - set(used_lt))
+
+        amis = []
+        for lt_name in unused_lts:
+            resp = self.ec2.describe_launch_template_versions(
+                LaunchTemplateName=lt_name
+            )
+            amis.append(lt_latest_version.get("LaunchTemplateData", {}).get("ImageId")
+                        for lt_latest_version in resp.get("LaunchTemplateVersions", []))
+
+        return amis
+
+    def fetch_zeroed_asg_lc(self):
 
         """
         Find AMIs for autoscaling groups who's desired capacity is set to 0
@@ -86,7 +115,7 @@ class Fetcher(object):
         resp = self.asg.describe_auto_scaling_groups()
         zeroed_lcs = [asg.get("LaunchConfigurationName", "")
                       for asg in resp.get("AutoScalingGroups", [])
-                      if asg.get("DesiredCapacity", 0) == 0]
+                      if asg.get("DesiredCapacity", 0) == 0 and len(asg.get("LaunchConfigurationNames", [])) > 0]
 
         resp = self.asg.describe_launch_configurations(
             LaunchConfigurationNames=zeroed_lcs
@@ -94,6 +123,39 @@ class Fetcher(object):
 
         amis = [lc.get("ImageId", "")
                 for lc in resp.get("LaunchConfigurations", [])]
+
+        return amis
+
+    def fetch_zeroed_asg_lt(self):
+
+        """
+        Find AMIs for autoscaling groups who's desired capacity is set to 0
+        """
+
+        resp = self.asg.describe_auto_scaling_groups()
+        # This does not support multiple versions of the same launch template being used
+        zeroed_lts = [asg.get("LaunchTemplate", {})
+                      for asg in resp.get("AutoScalingGroups", [])
+                      if asg.get("DesiredCapacity", 0) == 0 and len(asg.get("LaunchTemplateNames", [])) > 0]
+
+        zeroed_lt_names = [lt.get("LaunchTemplateName", "")
+                        for lt in zeroed_lts]
+
+        zeroed_lt_versions = [lt.get("LaunchTemplateVersion", "")
+                        for lt in zeroed_lts]
+
+        resp = self.ec2.describe_launch_templates(
+            LaunchTemplateNames=zeroed_lt_names
+        )
+
+        amis = []
+        for lt_name, lt_version in zip(zeroed_lt_names, zeroed_lt_versions):
+            resp = self.ec2.describe_launch_template_versions(
+                LaunchTemplateName=lt_name
+                # Cannot be empty... Versions=[lt_version] - unsure how to pass param only if present in Python
+            )
+            amis.append(lt_latest_version.get("LaunchTemplateData", {}).get("ImageId")
+                        for lt_latest_version in resp.get("LaunchTemplateVersions", []))
 
         return amis
 
