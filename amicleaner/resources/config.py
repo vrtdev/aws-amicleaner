@@ -34,3 +34,6 @@ EXCLUDED_MAPPING_VALUES = []
 AMI_MIN_DAYS = -1
 
 BOTO3_RETRIES = 10
+
+# Default AWS region_name
+REGION_NAME = "eu-west-1"
