@@ -8,7 +8,7 @@ import argparse
 
 from prettytable import PrettyTable
 
-from .resources.config import KEEP_PREVIOUS, AMI_MIN_DAYS
+from .resources.config import KEEP_PREVIOUS, AMI_MIN_DAYS, REGION_NAME
 
 
 class Printer(object):
@@ -118,6 +118,17 @@ def parse_args(args):
                         default=AMI_MIN_DAYS,
                         help="Number of days AMI to keep excluding those "
                              "currently being running")
+
+    parser.add_argument("--role-name",
+                        dest='role_name',
+                        type=str,
+                        help="Specify the role name to use")
+
+    parser.add_argument("--region-name",
+                        dest='region_name',
+                        type=str,
+                        default=REGION_NAME,
+                        help="Specify the region name to search in")
 
     parsed_args = parser.parse_args(args)
     if parsed_args.mapping_key and not parsed_args.mapping_values:

@@ -29,6 +29,8 @@ class App(object):
         self.full_report = args.full_report
         self.force_delete = args.force_delete
         self.ami_min_days = args.ami_min_days
+        self.role_name = args.role_name
+        self.region_name = args.region_name
 
         self.mapping_strategy = {
             "key": self.mapping_key,
@@ -39,24 +41,44 @@ class App(object):
     def fetch_candidates(self, available_amis=None, excluded_amis=None):
 
         """
-        Collects created AMIs,
+        Collects created AMIs and also checks if the AMIs are being used in other accounts,
         AMIs from ec2 instances, launch configurations, autoscaling groups
         and returns unused AMIs.
         """
-        f = Fetcher()
+        f = Fetcher(region_name=self.region_name)
 
         available_amis = available_amis or f.fetch_available_amis()
+
         excluded_amis = excluded_amis or []
 
         if not excluded_amis:
             excluded_amis += f.fetch_unattached_lc()
             excluded_amis += f.fetch_zeroed_asg()
             excluded_amis += f.fetch_instances()
+        
+        """ If role_name is given, search in other accounts """
+        if self.role_name:
+            """
+            If AMI(s) contains LaunchPermissions with UserId(s), then this AMI is also shared in another account,
+            and may be used there by another instance, this will loop over the UserId(s),
+            and it will scan the other accounts to check if it's being used.
+            If yes, it will place it in the excluded_amis list.
+
+            If LaunchPermissions or UserId is empty, it will skip the for loop.
+            """
+            for user_id in available_amis.get('LaunchPermissions', {}).get('UserId', []):
+                role_arn = "arn:aws:iam::{}:role/{}".format(user_id, self.role_name)
+                f = Fetcher(role_arn=role_arn, region_name=self.region_name)
+
+                excluded_amis += f.fetch_unattached_lc()
+                excluded_amis += f.fetch_zeroed_asg()
+                excluded_amis += f.fetch_instances()
 
         candidates = [v
                       for k, v
                       in available_amis.items()
                       if k not in excluded_amis]
+
         return candidates
 
     def prepare_candidates(self, candidates_amis=None):
@@ -145,6 +167,7 @@ class App(object):
         print(TERM.green("excluded_mapping_values : {0}".format(self.excluded_mapping_values)))
         print(TERM.green("keep_previous : {0}".format(self.keep_previous)))
         print(TERM.green("ami_min_days : {0}".format(self.ami_min_days)))
+        print(TERM.green("region_name : {0}".format(self.region_name)))
 
     @staticmethod
     def print_version():

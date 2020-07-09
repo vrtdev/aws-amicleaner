@@ -3,6 +3,7 @@
 
 from __future__ import absolute_import
 from builtins import object
+import os
 import boto3
 from botocore.config import Config
 from .resources.config import BOTO3_RETRIES
@@ -13,12 +14,27 @@ class Fetcher(object):
 
     """ Fetches function for AMI candidates to deletion """
 
-    def __init__(self, ec2=None, autoscaling=None):
+    def __init__(self, ec2=None, autoscaling=None, role_arn=None, region_name=None):
 
-        """ Initializes aws sdk clients """
+        """ Initializes aws sdk sessions/clients """        
+        if role_arn is not None:
+            sts = boto3.client('sts')
 
-        self.ec2 = ec2 or boto3.client('ec2', config=Config(retries={'max_attempts': BOTO3_RETRIES}))
-        self.asg = autoscaling or boto3.client('autoscaling')
+            credentials = sts.assume_role(
+                RoleArn=role_arn,
+                RoleSessionName="amicleaner-session",
+            )['Credentials']
+            
+            session = boto3.Session(
+                aws_access_key_id=credentials['AccessKeyId'],
+                aws_secret_access_key=credentials['SecretAccessKey'],
+                aws_session_token=credentials['SessionToken'],
+            )
+        else:
+            session = boto3.Session()
+        
+        self.ec2 = ec2 or session.client('ec2', region_name=region_name, config=Config(retries={'max_attempts': BOTO3_RETRIES}))
+        self.asg = autoscaling or session.client('autoscaling', region_name=region_name)
 
     def fetch_available_amis(self):
 
@@ -27,9 +43,12 @@ class Fetcher(object):
         available_amis = dict()
 
         my_custom_images = self.ec2.describe_images(Owners=['self'])
+
         for image_json in my_custom_images.get('Images'):
             ami = AMI.object_with_json(image_json)
             available_amis[ami.id] = ami
+            launch_permissions = self.ec2.describe_image_attribute(Attribute='launchPermission', ImageId=ami.id)
+            available_amis[ami.id] += launch_permissions
 
         return available_amis
 
