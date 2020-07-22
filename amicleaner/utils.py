@@ -124,6 +124,11 @@ def parse_args(args):
                         type=str,
                         help="Specify the role name to use")
 
+    parser.add_argument("--skip-accounts",
+                        dest='skip_accounts',
+                        nargs='+',
+                        help="Account id(s) to skip on scanning")
+
     parser.add_argument("--region-name",
                         dest='region_name',
                         type=str,
