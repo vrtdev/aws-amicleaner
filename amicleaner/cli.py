@@ -31,6 +31,7 @@ class App(object):
         self.ami_min_days = args.ami_min_days
         self.role_name = args.role_name
         self.region_name = args.region_name
+        self.skip_accounts = args.skip_accounts
 
         self.mapping_strategy = {
             "key": self.mapping_key,
@@ -76,7 +77,8 @@ class App(object):
             If LaunchPermissions or UserId is empty, it will skip the for loop.
             """
             for user_id in available_launch_permissions:
-                if user_id is not None:
+                if user_id is not None and user_id not in self.skip_accounts:
+                    print("Scanning Account ID: {}".format(user_id))
                     role_arn = "arn:aws:iam::{}:role/{}".format(user_id, self.role_name)
                     f = Fetcher(role_arn=role_arn, region_name=self.region_name)
 
@@ -140,10 +142,10 @@ class App(object):
             print(TERM.bold("\nCleaning from {} AMI id(s) ...".format(
                 len(candidates))
             ))
-            failed = AMICleaner().remove_amis_from_ids(candidates)
+            failed = AMICleaner(region_name=self.region_name).remove_amis_from_ids(candidates)
         else:
             print(TERM.bold("\nCleaning {} AMIs ...".format(len(candidates))))
-            failed = AMICleaner().remove_amis(candidates)
+            failed = AMICleaner(region_name=self.region_name).remove_amis(candidates)
 
         if failed:
             print(TERM.red("\n{0} failed snapshots".format(len(failed))))
@@ -153,7 +155,7 @@ class App(object):
 
         """ Find and removes orphan snapshots """
 
-        cleaner = OrphanSnapshotCleaner()
+        cleaner = OrphanSnapshotCleaner(region_name=self.region_name)
         snaps = cleaner.fetch()
 
         if not snaps:

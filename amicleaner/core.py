@@ -18,8 +18,8 @@ class OrphanSnapshotCleaner(object):
 
     """ Finds and removes ebs snapshots left orphaned """
 
-    def __init__(self, ec2=None):
-        self.ec2 = ec2 or boto3.client('ec2', config=Config(retries={'max_attempts': BOTO3_RETRIES}))
+    def __init__(self, ec2=None, region_name=None):
+        self.ec2 = ec2 or boto3.client('ec2', region_name=region_name, config=Config(retries={'max_attempts': BOTO3_RETRIES}))
 
     def get_snapshots_filter(self):
 
