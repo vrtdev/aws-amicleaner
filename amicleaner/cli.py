@@ -161,7 +161,7 @@ class App(object):
         Printer.print_orphan_snapshots(snaps)
 
         if not self.force_delete:
-            answer = raw_input(
+            answer = input(
                 "Do you want to continue and remove {} orphan snapshots "
                 "[y/N] ? : ".format(len(snaps)))
             confirm = (answer.lower() == "y")
