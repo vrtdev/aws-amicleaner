@@ -120,10 +120,13 @@ class App(object):
         for group_name, amis in mapped_amis.items():
             group_name = group_name or ""
 
-            reduced = c.reduce_candidates(amis, self.keep_previous, self.ami_min_days)
-            if reduced:
-                report[group_name] = reduced
-                candidates.extend(reduced)
+            if not group_name:
+                report["no-tags (excluded)"] = amis
+            else:
+                reduced = c.reduce_candidates(amis, self.keep_previous, self.ami_min_days)
+                if reduced:
+                    report[group_name] = reduced
+                    candidates.extend(reduced)
 
         Printer.print_report(report, self.full_report)
 
