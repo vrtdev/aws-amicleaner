@@ -32,6 +32,7 @@ class App(object):
         self.role_name = args.role_name
         self.region_name = args.region_name
         self.skip_accounts = args.skip_accounts
+        self.dry_run = args.dry_run
 
         self.mapping_strategy = {
             "key": self.mapping_key,
@@ -163,18 +164,21 @@ class App(object):
 
         Printer.print_orphan_snapshots(snaps)
 
-        if not self.force_delete:
-            answer = input(
-                "Do you want to continue and remove {} orphan snapshots "
-                "[y/N] ? : ".format(len(snaps)))
-            confirm = (answer.lower() == "y")
-        else:
-            confirm = True
+        confirm = False
 
-        if confirm:
-            print("Removing orphan snapshots... ")
-            count = cleaner.clean(snaps)
-            print("\n{0} orphan snapshots successfully removed !".format(count))
+        if not self.dry_run:
+            if not self.force_delete:
+                answer = input(
+                    "Do you want to continue and remove {} orphan snapshots "
+                    "[y/N] ? : ".format(len(snaps)))
+                confirm = (answer.lower() == "y")
+            else:
+                confirm = True
+
+            if confirm:
+                print("Removing orphan snapshots... ")
+                count = cleaner.clean(snaps)
+                print("\n{0} orphan snapshots successfully removed !".format(count))
 
     def print_defaults(self):
 
@@ -209,16 +213,17 @@ class App(object):
 
             delete = False
 
-            if not self.force_delete:
-                answer = input(
-                    "Do you want to continue and remove {} AMIs "
-                    "[y/N] ? : ".format(len(candidates)))
-                delete = (answer.lower() == "y")
-            else:
-                delete = True
+            if not self.dry_run:
+                if not self.force_delete:
+                    answer = input(
+                        "Do you want to continue and remove {} AMIs "
+                        "[y/N] ? : ".format(len(candidates)))
+                    delete = (answer.lower() == "y")
+                else:
+                    delete = True
 
-            if delete:
-                self.prepare_delete_amis(candidates)
+                if delete:
+                    self.prepare_delete_amis(candidates)
 
 
 def main():
