@@ -135,6 +135,11 @@ def parse_args(args):
                         default=REGION_NAME,
                         help="Specify the region name to search in")
 
+    parser.add_argument("--dry-run",
+                        dest='dry_run',
+                        action="store_true",
+                        help="Enable a test run instead of a real run")
+
     parsed_args = parser.parse_args(args)
     if parsed_args.mapping_key and not parsed_args.mapping_values:
         print("missing mapping-values\n")
