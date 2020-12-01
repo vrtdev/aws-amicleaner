@@ -167,5 +167,5 @@ Delete a list of AMIs
 
 
 See this `blog article
-<http://techblog.d2-si.eu/2017/06/15/cleaning-your-amazon-machine-images.html>`__
+<https://blog.d2si.io/2017/06/15/garbage-collecting-amazon-machine-images-ami/>`__
 for more information.
