@@ -1,5 +1,4 @@
 -r requirements.txt
-blessings==1.6
 codecov
 moto
 pep8>=1.7.0

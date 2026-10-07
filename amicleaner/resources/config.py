@@ -3,7 +3,25 @@
 
 # set your aws env vars to production
 
-from blessings import Terminal
+class Terminal:
+    # ANSI color codes to replace termcolor
+    ANSI_COLORS = {
+        'reset': '\033[0m',
+        'bold': '\033[1m',
+        'red': '\033[31m',
+        'green': '\033[32m',
+        'yellow': '\033[33m',
+        'blue': '\033[34m',
+    }
+
+    def colored(self, text, color):
+        """Simple replacement for termcolor.colored function."""
+        return f"{self.ANSI_COLORS.get(color, '')}{text}{self.ANSI_COLORS['reset']}"
+
+    def __getattr__(self, color):
+        """Dynamically create functions based on terminal colors."""
+        return lambda text: self.colored(text, color)
+
 
 # terminal colors
 TERM = Terminal()
